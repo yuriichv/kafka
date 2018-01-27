@@ -3,24 +3,73 @@ kind: Template
 metadata:
   name: kafka
   annotations:
-    "openshift.io/display-name": ApacheKafka
-    description: Apache Kafka
+    "openshift.io/display-name": Kafka
+    description: Kafka
     iconClass: icon-cogs
-    tags: "messaging,kafka"
+    tags: "kafka"
 parameters:
-- description: The namespace to instantiate kafka under. 
+- description: The namespace to instantiate under. Defaults to 'kafka'.
   name: NAMESPACE
   value: kafka
 - description: Registry to pull image
   name: REGISTRY
   value: docker-registry.default.svc.cluster.local:5000
+  #!!!!!!! сделать линк на is
 - description: The location of the kafka image
   name: IMAGE
-  value: docker-registry.default.svc.cluster.local:5000/kafka/kafka:latest
-- description: Storage size
-  name: PVSIZE
-  value: 50Gi
+  value: docker-registry.default.svc:5000/kafka/kafka
+- description: PVC request size
+  name: PV_SIZE
+  value: 5Gi
+- description: kafka repo with Dockerfile
+  name: BUILD_REPO
+  value: "https://github.com/yuriichv/kafka.git"
 objects:
+
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+    creationTimestamp: null
+    generation: 1
+    labels:
+      build: kafka
+    name: kafka
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ""
+
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+    creationTimestamp: null
+    labels:
+      build: kafka
+    name: kafka
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: kafka:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        uri: ${BUILD_REPO}
+      type: Git
+    strategy:
+      type: Docker
+    successfulBuildsHistoryLimit: 5
+  status:
+    lastVersion: 0
 
 - apiVersion: v1
   kind: Service
@@ -35,7 +84,7 @@ objects:
     clusterIP: None
     selector:
       app: kafka
-  
+
 - apiVersion: policy/v1beta1
   kind: PodDisruptionBudget
   metadata:
@@ -44,15 +93,15 @@ objects:
     selector:
       matchLabels:
         app: kafka
-    minAvailable: 1
-  
+    minAvailable: 2
+
 - apiVersion: apps/v1beta1
   kind: StatefulSet
   metadata:
     name: kafka
   spec:
     serviceName: kafka-svc
-    replicas: 1
+    replicas: 3
     template:
       metadata:
         labels:
@@ -61,33 +110,30 @@ objects:
         affinity:
           podAntiAffinity:
   # более правильный конфиг: 1 node = 1 pod
-            requiredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpressions:
-                    - key: "app"
-                      operator: In
-                      values:
-                      - kafka
-                topologyKey: "kubernetes.io/hostname"
+  #          requiredDuringSchedulingIgnoredDuringExecution:
+  #            - labelSelector:
+  #                matchExpressions:
+  #                  - key: "app"
+  #                    operator: In
+  #                    values:
+  #                    - kafka
+  #              topologyKey: "kubernetes.io/hostname"
   # для сред с 1 node.
-  #          preferredDuringSchedulingIgnoredDuringExecution:
-  #             - weight: 100
-  #               podAffinityTerm:
-  #                 labelSelector:
-  #                    matchExpressions:
-  #                      - key: "app"
-  #                        operator: In
-  #                        values:
-  #                        - kafka
-  #                 topologyKey: "kubernetes.io/hostname"
+            preferredDuringSchedulingIgnoredDuringExecution:
+               - weight: 100
+                 podAffinityTerm:
+                   labelSelector:
+                      matchExpressions:
+                        - key: "app"
+                          operator: In
+                          values:
+                          - kafka
+                   topologyKey: "kubernetes.io/hostname"
         terminationGracePeriodSeconds: 300
         containers:
         - name: k8skafka
           imagePullPolicy: Always
-  #        image: gcr.io/google_samples/k8skafka:v1
-  #        image: docker-registry.default.svc.cluster.local:5000/kafka/k8skafka:v1
-          image: ${IMAGE}
-  #        image: 172.30.1.1:5000/kafka/k8skafka:v0.10.2.1
+          image: "${IMAGE}"
           resources:
             requests:
               memory: "1Gi"
@@ -209,7 +255,7 @@ objects:
         accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
-            storage: ${PVSIZE}
+            storage: "${PV_SIZE}"
         selector:
           matchLabels:
             app: kafka

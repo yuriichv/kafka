@@ -1,29 +1,48 @@
+---
+kind: PersistentVolume
 apiVersion: v1
-kind: Template
 metadata:
-  name: kafka-pv
-  annotations:
-    "openshift.io/display-name": Kafka PVs
-    description: Persistent volumes for Apache Kafka
-    iconClass: icon-cogs
-    tags: "kafka"
-parameters:
-- description: 
-  name: PVPATH
-  required: true
-objects:  
-- apiVersion: v1
-  kind: PersistentVolume
-  metadata:
-    name: kafka-pv
-    labels:
-      type: local
-      app: kafka
-  spec:
-    storageClassName: ""
-    capacity:
-      storage: 50Gi
-    accessModes:
-      - ReadWriteOnce
-    hostPath:
-      path: "${PVPATH}/pv-kafka-data"
+  name: kafka-pv-0
+  labels:
+    type: local
+    app: kafka
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/home/openshift/openshift.local.pv/pv-kafka-0"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: kafka-pv-1
+  labels:
+    type: local
+    app: kafka
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/home/openshift/openshift.local.pv/pv-kafka-1"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: kafka-pv-2
+  labels:
+    type: local
+    app: kafka
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/home/openshift/openshift.local.pv/pv-kafka-2"
